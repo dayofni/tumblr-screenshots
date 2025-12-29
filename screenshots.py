@@ -113,6 +113,10 @@ async def main():
     
     secrets = load_secrets(SECRETS_PATH)
     
+    print(secrets)
+    
+    """
+    
     # Load playwright
     
     async with async_playwright() as playwright:
@@ -128,12 +132,11 @@ async def main():
         # Screenshot post!
         
         await screenshot_post(page, POST_URL, screenshot_all=True)
+    
+    """
         
 
 
 if __name__ == "__main__":
     
-    with open("secrets.toml") as f:
-        print()
-    
-    # asyncio.run(main())
+    asyncio.run(main())
