@@ -1,6 +1,7 @@
 
 import asyncio
 import os.path
+import tomllib
 import urllib.parse
 
 from datetime             import datetime
@@ -87,9 +88,32 @@ async def screenshot_post(page: Page, url: str, screenshot_all: bool = False, pa
 
 
 
+def load_secrets(path: str) -> dict[str, str]:
+    
+    with open(path) as f:
+        
+        data = tomllib.loads(f.read())
+        
+        if "CONSUMER_KEY" not in data:
+            raise ValueError("CONSUMER_KEY not found within secrets file!")
+        
+        if "SECRET_KEY" not in data:
+            raise ValueError("SECRET_KEY not found within secrets file!")
+
+        return data
+
+
+
 async def main():
     
-    POST_URL = "https://www.tumblr.com/briefoxx/804158067301335040/succubuscock-rb-to-encourage-the-person-you?source=share"
+    POST_URL     = "[YOUR POST HERE]"
+    SECRETS_PATH = "./secrets.toml"
+    
+    # Load secrets
+    
+    secrets = load_secrets(SECRETS_PATH)
+    
+    # Load playwright
     
     async with async_playwright() as playwright:
         
@@ -108,4 +132,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    
+    with open("secrets.toml") as f:
+        print()
+    
+    # asyncio.run(main())
