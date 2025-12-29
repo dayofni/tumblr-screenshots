@@ -16,19 +16,20 @@ POST_INJECT_CSS = """
     display: none;
 }
 
-"""
+""" 
 
 
-async def screenshot_post(page: Page, url: str, screenshot_all: bool = False, path=".") -> str:
+
+async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     
     """
     Using the Playwright page `page`, navigates to and screenshots a Tumblr post at `url`.
     
     This screenshot is then saved to disk at `path/filename.png`.
     
-    :param Page page:           A Playwright page object.
-    :param str url:             The URL of the Tumblr post to save
-    :param bool screenshot_all: Description
+    :param Page page: A Playwright page object.
+    :param str url:   The URL of the Tumblr post to save
+    :param str path:  Directory to save the screenshot to.
     
     :returns str: The path to the screenshot.
     """
@@ -41,43 +42,50 @@ async def screenshot_post(page: Page, url: str, screenshot_all: bool = False, pa
     if type(url) != str:
         raise TypeError(f"screenshot_post() expected a string, received {type(url).__name__}")
     
-    if type(screenshot_all) != bool:
-        raise TypeError(f"screenshot_post() expected a bool, received {type(screenshot_all).__name__}")
+    # Generate screenshot filename.
+    
+    url_path = urllib.parse.urlparse(url).path.split("/")
+    
+    username = url_path[1]
+    post_id  = [i for i in url_path if i.isnumeric()][0]
+    
+    print(username, post_id)
+    
+    date     = datetime.today().strftime("%Y%m%d")                    # Get the date in YYYYMMDD format.
+    img_path = os.path.join(path, f"{username}-{post_id}-{date}.png") # Screenshot path -- will be saved to path/USERNAME-EXAMPLE_ID-YYYYMMDD.png
     
     # Go to URL. 
     
     await page.goto(url, wait_until="domcontentloaded")
     
+    # Ensure page hasn't redirected to login-required page.
+    
+    if "login_required" in page.url:
+        raise ValueError("Blog requires Tumblr login.")
+    
     # Check for content warnings, and abort if found. (Cannot bypass mature content wall.)
     
-    cw_button = page.locator('button[class="VmbqY r21y5 Li_00 zn53i EF4A5"]')
+    cw_button = page.locator('button[class="VmbqY r21y5 Li_00 zn53i EF4A5"]').get_by_text("View post")
     
     if await cw_button.count():
-        raise ValueError("Cannot get past Tumblr auth on mature posts currently.")
+        await cw_button.click()
     
     # Grab the div that contains the post body. (uses data-testID: "timelinePosts"; change if no longer working)
     
-    locator   = page.locator('article div[class="eA_DC"]')
+    locator   = page.locator('article').locator('div[class="eA_DC"]')
     posts_num = await locator.count()
     
     # Ensure there's at least one post.
     
-    if posts_num <= 0:
+    if posts_num == 0:
         raise ValueError("Could not find posts on page; either wrong URL passed or Tumblr format has changed.")
-    
-    # Generate screenshot filename.
-    
-    post_id  = [i for i in urllib.parse.urlparse(url).path.split("/") if i.isnumeric()][0]
-    
-    date     = datetime.today().strftime("%Y%m%d")            # Get the date in YYYYMMDD format.
-    img_path = os.path.join(path, f"{post_id}-{date}.png")    # Saves screenshot at path/EXAMPLE_ID-YYYYMMDD-N.png
         
     # Get the target post (will always be first object hit by the locator) and screenshot it.
     
     post = locator.first
         
     await post.screenshot(
-        animations = "disabled",                          # Disables all CSS animations
+        animations = "disabled",      # Disables all CSS animations
         style      = POST_INJECT_CSS, # ".IvzMP.VC_rY.hgN9e" catches the login banner and hides it (through Firefox inspect)
         path       = img_path         
     )
@@ -106,16 +114,8 @@ def load_secrets(path: str) -> dict[str, str]:
 
 async def main():
     
-    POST_URL     = "[YOUR POST HERE]"
+    POST_URL     = "https://www.tumblr.com/briefoxx/804158067301335040"
     SECRETS_PATH = "./secrets.toml"
-    
-    # Load secrets
-    
-    secrets = load_secrets(SECRETS_PATH)
-    
-    print(secrets)
-    
-    """
     
     # Load playwright
     
@@ -124,16 +124,29 @@ async def main():
         # Launch headless Firefox.
         
         browser = await playwright.firefox.launch()
+        context = await browser.new_context()
+        
+        # await context.add_cookies([
+        #     {
+        #         "name": "sid",
+        #         "value": "...",
+        #         "domain": "https://tumblr.com",
+        #         "path": "/"
+        #     }
+        # ])
         
         # Create page (done this way to allow batch async downloads)
         
-        page = await browser.new_page()
+        page = await context.new_page()
         
         # Screenshot post!
         
-        await screenshot_post(page, POST_URL, screenshot_all=True)
-    
-    """
+        await screenshot_post(page, POST_URL, path="./screenshots")
+        
+        
+        import pprint
+        
+        pprint.pprint(await context.cookies())
         
 
 
