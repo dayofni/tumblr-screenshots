@@ -5,6 +5,7 @@ import tomllib
 import urllib.parse
 
 from datetime             import datetime
+from pprint               import pprint
 from playwright.async_api import async_playwright, Playwright, Page
 
 
@@ -101,6 +102,12 @@ async def main():
     POST_URL     = "https://www.tumblr.com/briefoxx/804158067301335040"
     SECRETS_PATH = "./secrets.toml"
     
+    # Get SID
+    
+    with open(SECRETS_PATH) as f:
+        secrets = tomllib.loads(f.read())
+        sid     = secrets["SID"]
+    
     # Load playwright
     
     async with async_playwright() as playwright:
@@ -110,14 +117,15 @@ async def main():
         browser = await playwright.firefox.launch()
         context = await browser.new_context()
         
-        # await context.add_cookies([
-        #     {
-        #         "name": "sid",
-        #         "value": "...",
-        #         "domain": "https://tumblr.com",
-        #         "path": "/"
-        #     }
-        # ])
+        await context.add_cookies([
+            {
+                "name": "sid",
+                "value": sid,
+                "domain": ".www.tumblr.com",
+                "path": "/",
+                "expires": 1798541386.0
+            }
+        ])
         
         # Create page (done this way to allow batch async downloads)
         
@@ -127,10 +135,11 @@ async def main():
         
         await screenshot_post(page, POST_URL, path="./screenshots")
         
+        pprint(await context.cookies())
         
-        import pprint
-        
-        pprint.pprint(await context.cookies())
+        await page.close()
+        await context.close()
+        await browser.close()
         
 
 
