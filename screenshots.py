@@ -70,7 +70,7 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     if await cw_button.count():
         await cw_button.click()
     
-    # Grab the div that contains the post body. (uses data-testID: "timelinePosts"; change if no longer working)
+    # Grab the div that contains the post body. (uses class eA_DC; change if no longer working)
     
     locator   = page.locator('article').locator('div[class="eA_DC"]')
     posts_num = await locator.count()
@@ -93,22 +93,6 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     # Return path to image
     
     return path
-
-
-
-def load_secrets(path: str) -> dict[str, str]:
-    
-    with open(path) as f:
-        
-        data = tomllib.loads(f.read())
-        
-        if "CONSUMER_KEY" not in data:
-            raise ValueError("CONSUMER_KEY not found within secrets file!")
-        
-        if "SECRET_KEY" not in data:
-            raise ValueError("SECRET_KEY not found within secrets file!")
-
-        return data
 
 
 
