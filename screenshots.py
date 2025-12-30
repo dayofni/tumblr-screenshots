@@ -5,7 +5,6 @@ import tomllib
 import urllib.parse
 
 from datetime             import datetime
-from pprint               import pprint
 from playwright.async_api import async_playwright, Playwright, Page
 
 
