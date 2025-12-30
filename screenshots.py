@@ -9,6 +9,7 @@ from pprint               import pprint
 from playwright.async_api import async_playwright, Playwright, Page
 
 
+
 POST_INJECT_CSS = """
 
 /* Hides the login prompt banner. */
@@ -45,19 +46,17 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     
     # Generate screenshot filename.
     
-    url_path = urllib.parse.urlparse(url).path.split("/")
+    url_path = urllib.parse.urlparse(url).path.split("/") # split the URL path into blocks
     
-    username = url_path[1]
-    post_id  = [i for i in url_path if i.isnumeric()][0]
+    username = url_path[1]                                # index 0 will always be ""
+    post_id  = [i for i in url_path if i.isnumeric()][0]  # it'll always be the numerical one
+    date     = datetime.today().strftime("%Y%m%d")        # Get today's date in YYYYMMDD format.
     
-    print(username, post_id)
-    
-    date     = datetime.today().strftime("%Y%m%d")                    # Get the date in YYYYMMDD format.
-    img_path = os.path.join(path, f"{username}-{post_id}-{date}.png") # Screenshot path -- will be saved to path/USERNAME-EXAMPLE_ID-YYYYMMDD.png
+    img_path = os.path.join(path, f"{username}-{post_id}-{date}.png") # path/USERNAME-EXAMPLE_ID-YYYYMMDD.png
     
     # Go to URL. 
     
-    await page.goto(url, wait_until="domcontentloaded")
+    await page.goto(url, wait_until="load")
     
     # Ensure page hasn't redirected to login-required page.
     
@@ -71,20 +70,33 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     if await cw_button.count():
         await cw_button.click()
     
+    # Remove the communities popup by clicking on its button.
+    
+    community_button = page.locator('button[class="VmbqY MuH6n QucfO giozV CKAFB"]')
+    
+    if await community_button.count():
+        await community_button.click()
+    
     # Grab the div that contains the post body. (uses class eA_DC; change if no longer working)
     
-    locator   = page.locator('article').locator('div[class="eA_DC"]')
+    locator   = page.locator('article').locator('div.eA_DC')
     posts_num = await locator.count()
     
     # Ensure there's at least one post.
     
     if posts_num == 0:
+        
+        await page.screenshot(
+            path = "error.png"
+        )
+        
         raise ValueError("Could not find posts on page; either wrong URL passed or Tumblr format has changed.")
         
     # Get the target post (will always be first object hit by the locator) and screenshot it.
     
     post = locator.first
-        
+    
+    
     await post.screenshot(
         animations = "disabled",      # Disables all CSS animations
         style      = POST_INJECT_CSS, # ".IvzMP.VC_rY.hgN9e" catches the login banner and hides it (through Firefox inspect)
@@ -99,14 +111,34 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
 
 async def main():
     
-    POST_URL     = "https://www.tumblr.com/briefoxx/804158067301335040"
+    POST_URL     = "https://www.tumblr.com/futchdelight/804287161843187712?source=share"
     SECRETS_PATH = "./secrets.toml"
     
-    # Get SID
+    # Get secrets, and determine whether cookies will be injected.
     
-    with open(SECRETS_PATH) as f:
-        secrets = tomllib.loads(f.read())
-        sid     = secrets["SID"]
+    secrets        = {}
+    inject_cookies = True
+    
+    if not os.path.exists(SECRETS_PATH):
+        inject_cookies = False
+    
+    else:
+    
+        with open(SECRETS_PATH) as f:
+            
+            secrets = tomllib.loads(f.read())
+            
+            # If we've one and not the other, abort.
+            
+            if ("SID" not in secrets) or ("SID_EXPIRES" not in secrets):
+                inject_cookies = False
+                
+            else:
+                sid     = secrets["SID"]     # Session ID cookie value
+                expires = datetime.strptime( # Session ID expiry date
+                    secrets["SID_EXPIRES"],
+                    "%a, %-d %b %Y %X %Z"
+                ).timestamp()
     
     # Load playwright
     
@@ -117,15 +149,26 @@ async def main():
         browser = await playwright.firefox.launch()
         context = await browser.new_context()
         
-        await context.add_cookies([
-            {
-                "name": "sid",
-                "value": sid,
-                "domain": ".www.tumblr.com",
-                "path": "/",
-                "expires": 1798541386.0
-            }
-        ])
+        # Inject session cookies into the browser context
+        
+        if inject_cookies:
+        
+            await context.add_cookies([
+                {
+                    "name": "sid",
+                    "value": sid,
+                    "domain": ".www.tumblr.com",
+                    "path": "/",
+                    "expires": expires
+                },
+                {
+                    "name": "logged_in",
+                    "value": "1",
+                    "domain": ".www.tumblr.com",
+                    "path": "/",
+                    "expires": expires
+                }
+            ])
         
         # Create page (done this way to allow batch async downloads)
         
@@ -135,11 +178,7 @@ async def main():
         
         await screenshot_post(page, POST_URL, path="./screenshots")
         
-        pprint(await context.cookies())
-        
-        await page.close()
-        await context.close()
-        await browser.close()
+        # (careful, I think there's a memory leak somewhere -- maybe don't do this /too/ many times in one terminal?)
         
 
 
