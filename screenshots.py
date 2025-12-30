@@ -18,6 +18,12 @@ POST_INJECT_CSS = """
     display: none;
 }
 
+/* Hides comments */
+
+.hgDsD.PsI3u {
+    display: none;
+}
+
 """ 
 
 
@@ -79,7 +85,7 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     
     # Grab the div that contains the post body. (uses class eA_DC; change if no longer working)
     
-    locator   = page.locator('article').locator('div.eA_DC')
+    locator   = page.locator('article').filter(has=page.locator('div.eA_DC'))
     posts_num = await locator.count()
     
     # Ensure there's at least one post.
