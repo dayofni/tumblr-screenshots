@@ -83,7 +83,7 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     if await community_button.count():
         await community_button.click()
     
-    # Grab the div that contains the post body. (uses class eA_DC; change if no longer working)
+    # Grab the div that contains the post body. (finds article that contains class eA_DC)
     
     locator   = page.locator('article').filter(has=page.locator('div.eA_DC'))
     posts_num = await locator.count()
