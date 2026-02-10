@@ -5,7 +5,8 @@ import tomllib
 import urllib.parse
 
 from datetime             import datetime
-from playwright.async_api import async_playwright, Playwright, Page
+from playwright.async_api import async_playwright, expect, Playwright, Page
+from typing               import Literal
 
 
 
@@ -39,16 +40,33 @@ div[role=group] div:has(div) {
 
 
 
-async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
+async def screenshot_post(
+    
+    page:       Page, 
+    url:        str, 
+    path:       str                            = ".", 
+    wait_until: Literal["load", "networkidle"] = "load"
+    
+) -> str:
     
     """
     Using the Playwright page `page`, navigates to and screenshots a Tumblr post at `url`.
     
     This screenshot is then saved to disk at `path/filename.png`.
     
-    :param Page page: A Playwright page object.
-    :param str url:   The URL of the Tumblr post to save
-    :param str path:  Directory to save the screenshot to.
+    :param Page page:     
+        A Playwright page object.
+    
+    :param str url:
+        The URL of the Tumblr post to save.
+    
+    :param str path:
+        Directory to save the screenshot to
+    .
+    :param Literal["load", "networkidle"] wait_until:
+        The state Playwright will load the page to. (Must at least be `"load"` to disable image lazy-loading.) 
+        If the post contains a lot of images that aren't loading, try setting to `"networkidle"`, otherwise keep on `"load"`.
+        However, *this will add a lot (at least 500ms) of latency*. Only change if necessary. 
     
     :returns str: The path to the screenshot.
     """
@@ -71,9 +89,32 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     
     img_path = os.path.join(path, f"{username}-{post_id}-{date}.png") # path/USERNAME-EXAMPLE_ID-YYYYMMDD.png
     
-    # Go to URL. 
+    # Go to url. 
     
-    await page.goto(url, wait_until="domcontentloaded")
+    await page.goto(url, wait_until="domcontentloaded", timeout=0)
+    
+    # Click any "Keep reading" button.
+    
+    keep_reading_locator = page.locator('article:first-of-type button[aria-label="Keep reading"]')
+    
+    if await keep_reading_locator.count():
+        await keep_reading_locator.click()
+    
+    # Inject JS to force the loading of all lazy-loaded images, and disable the gradient boxes.
+    
+    await page.evaluate("""
+                        
+    let div_nodes = document.querySelectorAll("article > div:nth-of-type(1) div[style]:has(> img[loading])"),
+        img_nodes = document.querySelectorAll("article > div:nth-of-type(1) div[style] > img[loading]");
+    
+    div_nodes.forEach( n => n.setAttribute("style", "padding-bottom: 44.837%;") );
+    img_nodes.forEach( n => n.setAttribute("loading", "eager") );
+    
+    """)
+    
+    # Load page
+    
+    await page.wait_for_load_state(wait_until, timeout=0)
     
     # Ensure page hasn't redirected to login-required page.
     
@@ -108,7 +149,7 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
         )
         
         raise ValueError("Could not find posts on page; either wrong URL passed or Tumblr's formatting has changed drastically.")
-        
+
     # Get the target post (will always be first object hit by the locator) and screenshot it.
     
     post = article_locator.first
@@ -127,7 +168,7 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
 
 async def main():
     
-    POST_URL     = "https://www.tumblr.com/spiraledfaun/808022383917219840"
+    POST_URL     = "https://www.tumblr.com/stimday/771348500066746368/do-you-love-the-color-of-the-sky-stimboard?source=share"
     SECRETS_PATH = "./secrets.toml"
     
     # Get secrets, and determine whether cookies will be injected.
