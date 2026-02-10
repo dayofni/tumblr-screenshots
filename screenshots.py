@@ -8,19 +8,24 @@ from datetime             import datetime
 from playwright.async_api import async_playwright, Playwright, Page
 
 
-# TODO: HARDEN SELECTORS 
 
 POST_INJECT_CSS = """
 
-/* Hides the login prompt banner. */
+/* Hides the "You need clearance" popup. */
 
-.IvzMP.VC_rY.hgN9e {
+div[aria-modal=true] {
     display: none;
 }
 
 /* Hides comments */
 
-.hgDsD.PsI3u {
+article div[aria-label="Post Activity"] {
+    display: none;
+}
+
+/* Hide login banner */
+
+div[data-testid=scroll-container] div div:has(footer[role=contentinfo]) { /* wow that's long?!?!? */
     display: none;
 }
 
@@ -62,37 +67,33 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     
     # Go to URL. 
     
-    await page.goto(url, wait_until="load")
+    await page.goto(url, wait_until="domcontentloaded")
     
     # Ensure page hasn't redirected to login-required page.
     
     if "login_required" in page.url:
         raise ValueError("Blog requires Tumblr login.")
     
-    # Check for content warnings, and abort if found. (Cannot bypass mature content wall.)
+    # Check for content warnings, and abort if found. (Cannot bypass mature content wall without cookie.)
     
-    # TODO: HARDEN SELECTORS 
-    
-    cw_button = page.locator('button[class="VmbqY r21y5 Li_00 zn53i EF4A5"]').get_by_text("View post")
+    cw_button = page.locator("div[data-testid=community-label-cover] button").get_by_text("View post")
     
     if await cw_button.count():
-        await cw_button.click()
+        raise RuntimeError("Mature content wall detected -- cannot bypass without SID cookie.")
     
     # Remove the communities popup by clicking on its button.
     
     # TODO: HARDEN SELECTORS 
     
-    community_button = page.locator('button[class="VmbqY MuH6n QucfO giozV CKAFB"]')
+    # community_button = page.locator('button[class="VmbqY MuH6n QucfO giozV CKAFB"]')
     
-    if await community_button.count():
-        await community_button.click()
+    # if await community_button.count():
+    #     await community_button.click()
     
     # Grab the div that contains the post body. (finds article that contains class eA_DC)
     
-    # TODO: HARDEN SELECTORS 
-    
-    locator   = page.locator('article')
-    posts_num = await locator.count()
+    article_locator = page.locator('article')
+    posts_num       = await article_locator.count()
     
     # Ensure there's at least one post.
     
@@ -106,7 +107,7 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
         
     # Get the target post (will always be first object hit by the locator) and screenshot it.
     
-    post = locator.first
+    post = article_locator.first
     
     await post.screenshot(
         animations = "disabled",      # Disables all CSS animations

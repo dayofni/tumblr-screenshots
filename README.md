@@ -15,6 +15,7 @@ To screenshot from blogs / posts requiring a login (e.g., mature / potentially-m
 ### Possible future improvements
 1. Using `aria-label` attributes to harden the locators better.
 2. Not requiring a SID cookie to access mature accounts. (annoying process)
+3. Ensure all images in the article are loaded before screenshotting.
 
 ### Dependencies
 
