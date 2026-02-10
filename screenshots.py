@@ -29,6 +29,12 @@ div[data-testid=scroll-container] div div:has(footer[role=contentinfo]) { /* wow
     display: none;
 }
 
+/* Hide communities popup */
+
+div[role=group] div:has(div) {
+    display: none;
+}
+
 """ 
 
 
@@ -79,16 +85,14 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     cw_button = page.locator("div[data-testid=community-label-cover] button").get_by_text("View post")
     
     if await cw_button.count():
+        
+        await cw_button.click()
+        
+        await page.screenshot(
+            path = "error.png"
+        )
+        
         raise RuntimeError("Mature content wall detected -- cannot bypass without SID cookie.")
-    
-    # Remove the communities popup by clicking on its button.
-    
-    # TODO: HARDEN SELECTORS 
-    
-    # community_button = page.locator('button[class="VmbqY MuH6n QucfO giozV CKAFB"]')
-    
-    # if await community_button.count():
-    #     await community_button.click()
     
     # Grab the div that contains the post body. (finds article that contains class eA_DC)
     
@@ -123,7 +127,7 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
 
 async def main():
     
-    POST_URL     = "https://www.tumblr.com/plaidos/796136868890787843"
+    POST_URL     = "https://www.tumblr.com/spiraledfaun/808022383917219840"
     SECRETS_PATH = "./secrets.toml"
     
     # Get secrets, and determine whether cookies will be injected.
