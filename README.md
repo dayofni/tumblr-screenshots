@@ -15,6 +15,7 @@ To screenshot from blogs / posts requiring a login (e.g., mature / potentially-m
 ### Possible future improvements
 1. Not requiring a SID cookie to access mature accounts. (annoying process)
 2. Get long image-posts / posts with many images to load consistently -- it works most of the time, but not all of the time. ~~(hate hate hate hate hate hate)~~
+3. Make this more useful as a library, maybe by including a class that handles Playwright and inserts cookies for you? (might be more useful if I make logins work off username / password instead of cookies)
 
 ### Dependencies
 - playwright (>=1.57.0)
