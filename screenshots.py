@@ -39,7 +39,7 @@ div[role=group] div:has(div) {
 """ 
 
 
-async def screenshot_post(page: Page, url: str, path: str = ".", log_status: bool = False) -> str:
+async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     
     """
     Using the Playwright page `page`, navigates to and screenshots a Tumblr post at `url`.
@@ -54,10 +54,6 @@ async def screenshot_post(page: Page, url: str, path: str = ".", log_status: boo
     
     :param str path:
         Directory to save the screenshot to.
-    .
-    :param bool log_status:
-        If set to `True`, prints status info to the terminal.
-        If set to `False`, doesn't do that.
     
     :returns str: The path to the screenshot.
     """
