@@ -8,6 +8,7 @@ from datetime             import datetime
 from playwright.async_api import async_playwright, Playwright, Page
 
 
+# TODO: HARDEN SELECTORS 
 
 POST_INJECT_CSS = """
 
@@ -70,12 +71,16 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     
     # Check for content warnings, and abort if found. (Cannot bypass mature content wall.)
     
+    # TODO: HARDEN SELECTORS 
+    
     cw_button = page.locator('button[class="VmbqY r21y5 Li_00 zn53i EF4A5"]').get_by_text("View post")
     
     if await cw_button.count():
         await cw_button.click()
     
     # Remove the communities popup by clicking on its button.
+    
+    # TODO: HARDEN SELECTORS 
     
     community_button = page.locator('button[class="VmbqY MuH6n QucfO giozV CKAFB"]')
     
@@ -84,7 +89,9 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     
     # Grab the div that contains the post body. (finds article that contains class eA_DC)
     
-    locator   = page.locator('article').filter(has=page.locator('div.eA_DC'))
+    # TODO: HARDEN SELECTORS 
+    
+    locator   = page.locator('article')
     posts_num = await locator.count()
     
     # Ensure there's at least one post.
@@ -101,7 +108,6 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     
     post = locator.first
     
-    
     await post.screenshot(
         animations = "disabled",      # Disables all CSS animations
         style      = POST_INJECT_CSS, # ".IvzMP.VC_rY.hgN9e" catches the login banner and hides it (through Firefox inspect)
@@ -116,7 +122,7 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
 
 async def main():
     
-    POST_URL     = "https://www.tumblr.com/futchdelight/804287161843187712?source=share"
+    POST_URL     = "https://www.tumblr.com/plaidos/796136868890787843"
     SECRETS_PATH = "./secrets.toml"
     
     # Get secrets, and determine whether cookies will be injected.

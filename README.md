@@ -12,6 +12,10 @@ To screenshot from blogs / posts requiring a login (e.g., mature / potentially-m
 
 (Note: uses Playwright's headless Firefox.)
 
+### Possible future improvements
+1. Using `aria-label` attributes to harden the locators better.
+2. Not requiring a SID cookie to access mature accounts. (annoying process)
+
 ### Dependencies
 
 - playwright (>=1.57.0)
