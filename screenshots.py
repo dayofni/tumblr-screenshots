@@ -78,7 +78,7 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     # Ensure page hasn't redirected to login-required page.
     
     if "login_required" in page.url:
-        raise ValueError("Blog requires Tumblr login.")
+        raise ValueError("Blog requires Tumblr login -- cannot bypass without SID cookie.")
     
     # Check for content warnings, and abort if found. (Cannot bypass mature content wall without cookie.)
     
@@ -94,7 +94,7 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
         
         raise RuntimeError("Mature content wall detected -- cannot bypass without SID cookie.")
     
-    # Grab the div that contains the post body. (finds article that contains class eA_DC)
+    # Grab the post body. (finds the first article)
     
     article_locator = page.locator('article')
     posts_num       = await article_locator.count()
@@ -107,7 +107,7 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
             path = "error.png"
         )
         
-        raise ValueError("Could not find posts on page; either wrong URL passed or Tumblr format has changed.")
+        raise ValueError("Could not find posts on page; either wrong URL passed or Tumblr's formatting has changed drastically.")
         
     # Get the target post (will always be first object hit by the locator) and screenshot it.
     
@@ -115,7 +115,7 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     
     await post.screenshot(
         animations = "disabled",      # Disables all CSS animations
-        style      = POST_INJECT_CSS, # ".IvzMP.VC_rY.hgN9e" catches the login banner and hides it (through Firefox inspect)
+        style      = POST_INJECT_CSS, # Hides all unnecessary popups etc. -- see constant at top of page for what's hidden.
         path       = img_path         
     )
     

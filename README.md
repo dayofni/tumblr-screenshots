@@ -13,10 +13,9 @@ To screenshot from blogs / posts requiring a login (e.g., mature / potentially-m
 (Note: uses Playwright's headless Firefox.)
 
 ### Possible future improvements
-1. Using `aria-label` attributes to harden the locators better.
-2. Not requiring a SID cookie to access mature accounts. (annoying process)
-3. Ensure all images in the article are loaded before screenshotting.
+1. Not requiring a SID cookie to access mature accounts. (annoying process)
+2. Ensure all images in the article are loaded before screenshotting.
+3. Ensure this works with custom blog themes. (Make sure it captures theme -- maybe include a toggle?) 
 
 ### Dependencies
-
 - playwright (>=1.57.0)
