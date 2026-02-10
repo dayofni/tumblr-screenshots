@@ -5,9 +5,7 @@ import tomllib
 import urllib.parse
 
 from datetime             import datetime
-from playwright.async_api import async_playwright, expect, Playwright, Page
-from typing               import Literal
-
+from playwright.async_api import async_playwright, expect, Page
 
 
 POST_INJECT_CSS = """
@@ -169,6 +167,30 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     return path
 
 
+def get_secrets(path: str) -> tuple[str, float] | None:
+    
+    # If there's no secrets file, no secrets.
+    
+    if not os.path.exists(path):
+        return None
+    
+    with open(path) as f:
+            
+        secrets = tomllib.loads(f.read())
+            
+        # If we've one and not the other, no secrets.
+            
+        if ("SID" not in secrets) or ("SID_EXPIRES" not in secrets):
+            return None
+        
+        sid     = secrets["SID"]     # Session ID cookie value
+        expires = datetime.strptime( # Session ID expiry date
+            secrets["SID_EXPIRES"],
+            "%a, %-d %b %Y %X %Z"
+        ).timestamp()
+        
+    return (sid, expires)
+
 
 async def main():
     
@@ -177,29 +199,11 @@ async def main():
     
     # Get secrets, and determine whether cookies will be injected.
     
-    secrets        = {}
-    inject_cookies = True
+    secrets        = get_secrets(SECRETS_PATH)
+    inject_cookies = secrets is not None
     
-    if not os.path.exists(SECRETS_PATH):
-        inject_cookies = False
-    
-    else:
-    
-        with open(SECRETS_PATH) as f:
-            
-            secrets = tomllib.loads(f.read())
-            
-            # If we've one and not the other, abort.
-            
-            if ("SID" not in secrets) or ("SID_EXPIRES" not in secrets):
-                inject_cookies = False
-                
-            else:
-                sid     = secrets["SID"]     # Session ID cookie value
-                expires = datetime.strptime( # Session ID expiry date
-                    secrets["SID_EXPIRES"],
-                    "%a, %-d %b %Y %X %Z"
-                ).timestamp()
+    if secrets:
+        sid, expires = secrets 
     
     # Load playwright
     
@@ -238,11 +242,7 @@ async def main():
         # Screenshot post!
         
         await screenshot_post(page, POST_URL, path="./screenshots")
-        
-        # (careful, I think there's a memory leak somewhere -- maybe don't do this /too/ many times in one terminal?)
-        
 
 
 if __name__ == "__main__":
-    
     asyncio.run(main())
