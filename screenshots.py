@@ -6,6 +6,7 @@ import urllib.parse
 
 from datetime             import datetime
 from playwright.async_api import async_playwright, expect, Page
+from typing               import Any
 
 
 POST_INJECT_CSS = """
@@ -191,6 +192,29 @@ def get_secrets(path: str) -> tuple[str, float] | None:
         
     return (sid, expires)
 
+def generate_cookies(sid: str, expires: float) -> list[dict[str, Any]]:
+    
+    """
+    Generates the SID and logged_in cookies to simulate being logged in.
+    """
+    
+    return [
+        {
+            "name": "sid",
+            "value": sid,
+            "domain": ".www.tumblr.com",
+            "path": "/",
+            "expires": expires
+        },
+        {
+            "name": "logged_in",
+            "value": "1",
+            "domain": ".www.tumblr.com",
+            "path": "/",
+            "expires": expires
+        }
+    ]
+
 
 async def main():
     
@@ -217,23 +241,7 @@ async def main():
         # Inject session cookies into the browser context
         
         if inject_cookies:
-        
-            await context.add_cookies([
-                {
-                    "name": "sid",
-                    "value": sid,
-                    "domain": ".www.tumblr.com",
-                    "path": "/",
-                    "expires": expires
-                },
-                {
-                    "name": "logged_in",
-                    "value": "1",
-                    "domain": ".www.tumblr.com",
-                    "path": "/",
-                    "expires": expires
-                }
-            ])
+            await context.add_cookies(generate_cookies(sid, expires)) # type:ignore
         
         # Create page (done this way to allow batch async downloads)
         
