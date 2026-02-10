@@ -39,15 +39,7 @@ div[role=group] div:has(div) {
 """ 
 
 
-
-async def screenshot_post(
-    
-    page:       Page, 
-    url:        str, 
-    path:       str                            = ".", 
-    wait_until: Literal["load", "networkidle"] = "load"
-    
-) -> str:
+async def screenshot_post(page: Page, url: str, path: str = ".", log_status: bool = False) -> str:
     
     """
     Using the Playwright page `page`, navigates to and screenshots a Tumblr post at `url`.
@@ -61,12 +53,11 @@ async def screenshot_post(
         The URL of the Tumblr post to save.
     
     :param str path:
-        Directory to save the screenshot to
+        Directory to save the screenshot to.
     .
-    :param Literal["load", "networkidle"] wait_until:
-        The state Playwright will load the page to. (Must at least be `"load"` to disable image lazy-loading.) 
-        If the post contains a lot of images that aren't loading, try setting to `"networkidle"`, otherwise keep on `"load"`.
-        However, *this will add a lot (at least 500ms) of latency*. Only change if necessary. 
+    :param bool log_status:
+        If set to `True`, prints status info to the terminal.
+        If set to `False`, doesn't do that.
     
     :returns str: The path to the screenshot.
     """
@@ -79,15 +70,24 @@ async def screenshot_post(
     if type(url) != str:
         raise TypeError(f"screenshot_post() expected a string, received {type(url).__name__}")
     
+    # Set to default theme if blog has custom theme (can't reliably handle all themes) 
+    
+    url_parse = urllib.parse.urlparse(url)   # parse the URL
+    url_path  = url_parse.path.split("/")    # split the URL path into blocks
+    
+    if not url_parse.netloc.startswith("www.tumblr"):
+        username = url_parse.netloc.split(".")[0]
+        url_path = ["", username] + url_path[2:] # removes "" and "post"
+        url      = f"{url_parse.scheme}://www.tumblr.com{'/'.join(url_path)}"
+    
+    else:
+        username = url_path[1] # index 0 will always be ""
+    
     # Generate screenshot filename.
     
-    url_path = urllib.parse.urlparse(url).path.split("/") # split the URL path into blocks
-    
-    username = url_path[1]                                # index 0 will always be ""
-    post_id  = [i for i in url_path if i.isnumeric()][0]  # it'll always be the numerical one
-    date     = datetime.today().strftime("%Y%m%d")        # Get today's date in YYYYMMDD format.
-    
-    img_path = os.path.join(path, f"{username}-{post_id}-{date}.png") # path/USERNAME-EXAMPLE_ID-YYYYMMDD.png
+    post_id  = [i for i in url_path if i.isnumeric()][0]               # it'll always be the numerical one
+    date     = datetime.today().strftime("%Y%m%d")                     # Get today's date in YYYYMMDD format.
+    img_path = os.path.join(path, f"{username}-{post_id}-{date}.png")  # path/USERNAME-EXAMPLE_ID-YYYYMMDD.png
     
     # Go to url. 
     
@@ -100,21 +100,24 @@ async def screenshot_post(
     if await keep_reading_locator.count():
         await keep_reading_locator.click()
     
-    # Inject JS to force the loading of all lazy-loaded images, and disable the gradient boxes.
+    # Cheat the system and change page size to get loading to work -- no JS required.
     
-    await page.evaluate("""
-                        
-    let div_nodes = document.querySelectorAll("article > div:nth-of-type(1) div[style]:has(> img[loading])"),
-        img_nodes = document.querySelectorAll("article > div:nth-of-type(1) div[style] > img[loading]");
+    # TODO: I suspect one of our problems lies in here.
+    # TODO: Figure out why we're not loading the entire page consistently.
     
-    div_nodes.forEach( n => n.setAttribute("style", "padding-bottom: 44.837%;") );
-    img_nodes.forEach( n => n.setAttribute("loading", "eager") );
+    dimensions = await page.locator("article").first.bounding_box()
     
-    """)
+    if dimensions is None:
+        raise RuntimeError("wtf")
+    
+    await page.set_viewport_size({
+        "height": int(dimensions["height"]) + 100, 
+        "width": int(dimensions["width"])
+    })
     
     # Load page
     
-    await page.wait_for_load_state(wait_until, timeout=0)
+    await page.wait_for_load_state("load", timeout=0)
     
     # Ensure page hasn't redirected to login-required page.
     
@@ -126,8 +129,6 @@ async def screenshot_post(
     cw_button = page.locator("div[data-testid=community-label-cover] button").get_by_text("View post")
     
     if await cw_button.count():
-        
-        await cw_button.click()
         
         await page.screenshot(
             path = "error.png"
@@ -149,7 +150,14 @@ async def screenshot_post(
         )
         
         raise ValueError("Could not find posts on page; either wrong URL passed or Tumblr's formatting has changed drastically.")
-
+    
+    # Ensure all lazy-loaded images have, well, loaded.
+    
+    lazy_images = await page.locator("article > div:nth-of-type(1) div[style] > img[loading=lazy]:visible").all()
+    
+    for image in lazy_images:
+        await expect(image).to_have_js_property("complete", True, timeout=0)
+    
     # Get the target post (will always be first object hit by the locator) and screenshot it.
     
     post = article_locator.first
@@ -168,7 +176,7 @@ async def screenshot_post(
 
 async def main():
     
-    POST_URL     = "https://www.tumblr.com/stimday/771348500066746368/do-you-love-the-color-of-the-sky-stimboard?source=share"
+    POST_URL     = "https://www.tumblr.com/snaret/801750603080630272/op-of-this-collection-got-deleted-but-the-other"
     SECRETS_PATH = "./secrets.toml"
     
     # Get secrets, and determine whether cookies will be injected.

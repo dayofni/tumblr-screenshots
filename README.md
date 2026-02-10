@@ -14,8 +14,7 @@ To screenshot from blogs / posts requiring a login (e.g., mature / potentially-m
 
 ### Possible future improvements
 1. Not requiring a SID cookie to access mature accounts. (annoying process)
-2. Ensure this works with custom blog themes. (Make sure it captures theme -- maybe include a toggle?) 
-3. Find some magical and efficient way of avoiding `"networkload"` for slow-loading images.
+2. Get long image-posts / posts with many images to load consistently -- it works most of the time, but not all of the time. ~~(hate hate hate hate hate hate)~~
 
 ### Dependencies
 - playwright (>=1.57.0)
