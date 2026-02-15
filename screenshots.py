@@ -88,6 +88,11 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     
     await page.goto(url, wait_until="domcontentloaded", timeout=0)
     
+    # Ensure page hasn't redirected to login-required page.
+    
+    if "login_required" in page.url:
+        raise ValueError("Blog requires Tumblr login -- cannot bypass without SID cookie.")
+    
     # Click any "Keep reading" button.
     
     keep_reading_locator = page.locator('article:first-of-type button[aria-label="Keep reading"]')
@@ -103,7 +108,7 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     dimensions = await page.locator("article").first.bounding_box()
     
     if dimensions is None:
-        raise RuntimeError("wtf")
+        raise RuntimeError("Somehow, the first article has no dimensions. Something weird's happened.")
     
     await page.set_viewport_size({
         "height": int(dimensions["height"]) + 100, 
@@ -113,11 +118,6 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     # Load page
     
     await page.wait_for_load_state("load", timeout=0)
-    
-    # Ensure page hasn't redirected to login-required page.
-    
-    if "login_required" in page.url:
-        raise ValueError("Blog requires Tumblr login -- cannot bypass without SID cookie.")
     
     # Check for content warnings, and abort if found. (Cannot bypass mature content wall without cookie.)
     
@@ -130,6 +130,13 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
         )
         
         raise RuntimeError("Mature content wall detected -- cannot bypass without SID cookie.")
+    
+    # Click on the "see all tags" button.
+    
+    see_all_button = page.locator("article div:has(footer[aria-label='Post footer']) button").get_by_text("See all")
+    
+    if await see_all_button.count():
+        await see_all_button.click()
     
     # Grab the post body. (finds the first article)
     
@@ -192,6 +199,7 @@ def get_secrets(path: str) -> tuple[str, float] | None:
         
     return (sid, expires)
 
+
 def generate_cookies(sid: str, expires: float) -> list[dict[str, Any]]:
     
     """
@@ -218,7 +226,7 @@ def generate_cookies(sid: str, expires: float) -> list[dict[str, Any]]:
 
 async def main():
     
-    POST_URL     = "https://www.tumblr.com/snaret/801750603080630272/op-of-this-collection-got-deleted-but-the-other"
+    POST_URL     = "https://www.tumblr.com/starcut-sand/791234109196451840/loveeee-characters-who-think-theyre-likable-but?source=share"
     SECRETS_PATH = "./secrets.toml"
     
     # Get secrets, and determine whether cookies will be injected.
