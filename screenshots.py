@@ -93,9 +93,16 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     if "login_required" in page.url:
         raise ValueError("Blog requires Tumblr login -- cannot bypass without SID cookie.")
     
+    # Check for content warnings, and abort if found. (Cannot bypass mature content wall without cookie.)
+    
+    cw_button = page.locator("div[data-testid=community-label-cover] button").get_by_text("View post")
+    
+    if await cw_button.count():
+        raise RuntimeError("Mature content wall detected -- cannot bypass without SID cookie.")
+    
     # Click any "Keep reading" button.
     
-    keep_reading_locator = page.locator('article:first-of-type button[aria-label="Keep reading"]')
+    keep_reading_locator = page.locator('article button[aria-label="Keep reading"]').first
     
     if await keep_reading_locator.count():
         await keep_reading_locator.click()
@@ -118,18 +125,6 @@ async def screenshot_post(page: Page, url: str, path: str = ".") -> str:
     # Load page
     
     await page.wait_for_load_state("load", timeout=0)
-    
-    # Check for content warnings, and abort if found. (Cannot bypass mature content wall without cookie.)
-    
-    cw_button = page.locator("div[data-testid=community-label-cover] button").get_by_text("View post")
-    
-    if await cw_button.count():
-        
-        await page.screenshot(
-            path = "error.png"
-        )
-        
-        raise RuntimeError("Mature content wall detected -- cannot bypass without SID cookie.")
     
     # Click on the "see all tags" button.
     
@@ -226,7 +221,7 @@ def generate_cookies(sid: str, expires: float) -> list[dict[str, Any]]:
 
 async def main():
     
-    POST_URL     = "https://www.tumblr.com/starcut-sand/791234109196451840/loveeee-characters-who-think-theyre-likable-but?source=share"
+    POST_URL     = "https://www.tumblr.com/0w0tsuki/808750900793540608?source=share"
     SECRETS_PATH = "./secrets.toml"
     
     # Get secrets, and determine whether cookies will be injected.
